@@ -28,7 +28,7 @@ export class AwsInfraStack extends cdk.Stack {
             // branch of your repository. You can use wildcards here, but
             // you should be careful about what you allow.
             "token.actions.githubusercontent.com:sub": [
-              'repo:akdev/aws-log-archive:ref:refs/heads/main',
+              'repo:akdev1l/aws-log-archive:ref:refs/heads/main',
             ],
           },
           // This specifies that the audience (aud) claim must be sts.amazonaws.com
@@ -42,7 +42,7 @@ export class AwsInfraStack extends cdk.Stack {
 
     const allowCdkAccessPolicyStatement = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
-      actions: ["sts:AssumeRole", "sts:AssumeRoleWithWebIdentity"],
+      actions: ["sts:AssumeRole"],
       resources: ["arn:aws:iam::*:role/cdk-*"],
       conditions: {
         StringEquals: {

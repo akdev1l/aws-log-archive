@@ -28,4 +28,6 @@ jobs:
          role-session-name: aws-log-archive
 
      - name: Deploy via CDK
-       run: npx cdk deploy
+       run: |
+         npm ci
+         npx cdk deploy
