@@ -23,9 +23,9 @@ jobs:
      - name: Configure AWS credentials
        uses: aws-actions/configure-aws-credentials@v2
        with:
-         role-to-assume: arn:aws:iam::749640853560:role/AwsInfraStack-GithubActionsRoleF5CC769F-9Q9yZSUr2Ir4
+         role-to-assume: arn:aws:iam::749640853560:role/OidcGithubActions
          aws-region: ca-central-1
-         role-session-name: GitHubActions
+         role-session-name: aws-log-archive
 
      - name: Deploy via CDK
        run: npx cdk deploy

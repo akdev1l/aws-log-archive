@@ -15,9 +15,11 @@ export class AwsInfraStack extends cdk.Stack {
     this.githubActionsOidcProvider = new iam.OpenIdConnectProvider(this, 'GitHubActionsOidc', {
       url: 'https://token.actions.githubusercontent.com',
       clientIds: [ 'sts.amazonaws.com' ],
+      thumbprints: ['6938fd4d98bab03faadb97b34396831e3780aea1', '1c58a3a8518e8759bf075b76b750d4f2df264fcd'],
     });
 
     this.githubActionsRole = new iam.Role(this, `GithubActionsRole`, {
+      roleName: 'OidcGithubActions',
       assumedBy: new iam.FederatedPrincipal(
         this.githubActionsOidcProvider.openIdConnectProviderArn,
         {
@@ -40,7 +42,7 @@ export class AwsInfraStack extends cdk.Stack {
 
     const allowCdkAccessPolicyStatement = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
-      actions: ["sts:AssumeRole"],
+      actions: ["sts:AssumeRole", "sts:AssumeRoleWithWebIdentity"],
       resources: ["arn:aws:iam::*:role/cdk-*"],
       conditions: {
         StringEquals: {
