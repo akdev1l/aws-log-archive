@@ -1,16 +1,65 @@
 import * as cdk from 'aws-cdk-lib';
+import { aws_iam as iam } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
 export class AwsInfraStack extends cdk.Stack {
+  readonly githubActionsOidcProvider: iam.OpenIdConnectProvider;
+  readonly githubActionsRole: iam.Role;
+
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     // The code that defines your stack goes here
 
-    // example resource
-    // const queue = new sqs.Queue(this, 'AwsInfraQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
+    this.githubActionsOidcProvider = new iam.OpenIdConnectProvider(this, 'GitHubActionsOidc', {
+      url: 'https://token.actions.githubusercontent.com',
+      clientIds: [ 'sts.amazonaws.com' ],
+    });
+
+    this.githubActionsRole = new iam.Role(this, `GithubActionsRole`, {
+      assumedBy: new iam.FederatedPrincipal(
+        this.githubActionsOidcProvider.openIdConnectProviderArn,
+        {
+          StringLike: {
+            // This specifies that the subscriber (sub) claim must be the main
+            // branch of your repository. You can use wildcards here, but
+            // you should be careful about what you allow.
+            "token.actions.githubusercontent.com:sub": [
+              'repo:akdev/aws-log-archive:ref:refs/heads/main',
+            ],
+          },
+          // This specifies that the audience (aud) claim must be sts.amazonaws.com
+          StringEquals: {
+            "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+          },
+        },
+        "sts:AssumeRoleWithWebIdentity" // <-- Allows use of OIDC identity
+      ),
+    });
+
+    const allowCdkAccessPolicyStatement = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ["sts:AssumeRole"],
+      resources: ["arn:aws:iam::*:role/cdk-*"],
+      conditions: {
+        StringEquals: {
+          "aws:ResourceTag/aws-cdk:bootstrap-role": [
+            "file-publishing",
+            "lookup",
+            "deploy",
+          ],
+        },
+      },
+    });
+
+    this.githubActionsRole.addToPolicy(allowCdkAccessPolicyStatement);
+
+    const outputs: Record<string, string> = {
+      GithubActionsRole: this.githubActionsRole.roleArn,
+    };
+
+    Object.keys(outputs)
+     .forEach(key => new cdk.CfnOutput(this, `${key}Output`, { value: outputs[key] }));
   }
 }
