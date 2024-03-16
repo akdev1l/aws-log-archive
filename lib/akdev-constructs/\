@@ -1,0 +1,30 @@
+import * as cdk from 'aws-cdk-lib';
+import { aws_iam as iam } from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+// import * as sqs from 'aws-cdk-lib/aws-sqs';
+
+export interface SesEmailIdentityProps {
+    domain: string;
+}
+
+export class SesEmailIdentity extends Construct {
+  readonly githubActionsOidcProvider: iam.OpenIdConnectProvider;
+  readonly githubActionsRole: iam.Role;
+
+  constructor(scope: Construct, id: string, props?: any) {
+    super(scope, id, props);
+
+    const sesDomain = new route53.PublicHostedZone(this, 'HostedZone', {
+      zoneName: 'fully.qualified.domain.com',
+    });
+    const identity = new ses.EmailIdentity(this, 'Identity', {
+      identity: ses.Identity.domain(props.domain),
+    });
+
+    const output: Record<string, string> = {
+      GithubActionsRole: this.githubActionsRole.roleArn,
+    };
+    Object.keys(output)
+     .forEach(key => new cdk.CfnOutput(this, `${key}Output`, { value: output[key] }));
+  }
+}

@@ -3,65 +3,23 @@ import { aws_iam as iam } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
+import * as akdev from './akdev-constructs';
+
 export class AwsInfraStack extends cdk.Stack {
-  readonly githubActionsOidcProvider: iam.OpenIdConnectProvider;
-  readonly githubActionsRole: iam.Role;
+  readonly githubActionsOidcProvider: akdev.GithubActionsOidcProvider;
+  readonly monitoringEmailIdentity: akdev.SesEmailIdentity;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // The code that defines your stack goes here
-
-    this.githubActionsOidcProvider = new iam.OpenIdConnectProvider(this, 'GitHubActionsOidc', {
-      url: 'https://token.actions.githubusercontent.com',
-      clientIds: [ 'sts.amazonaws.com' ],
-      thumbprints: ['6938fd4d98bab03faadb97b34396831e3780aea1', '1c58a3a8518e8759bf075b76b750d4f2df264fcd'],
+    this.githubActionsOidcProvider = new akdev.GithubActionsOidcProvider(this, 'GithubOidcProvider', {
+      owner: 'akdev1l',
+      repo: 'aws-log-archive',
+      branch: 'main',
     });
 
-    this.githubActionsRole = new iam.Role(this, `GithubActionsRole`, {
-      roleName: 'OidcGithubActions',
-      assumedBy: new iam.FederatedPrincipal(
-        this.githubActionsOidcProvider.openIdConnectProviderArn,
-        {
-          StringLike: {
-            // This specifies that the subscriber (sub) claim must be the main
-            // branch of your repository. You can use wildcards here, but
-            // you should be careful about what you allow.
-            "token.actions.githubusercontent.com:sub": [
-              'repo:akdev1l/aws-log-archive:ref:refs/heads/main',
-            ],
-          },
-          // This specifies that the audience (aud) claim must be sts.amazonaws.com
-          StringEquals: {
-            "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          },
-        },
-        "sts:AssumeRoleWithWebIdentity" // <-- Allows use of OIDC identity
-      ),
+    this.monitoringEmailIdentity = new akdev.SesEmailIdentity(this, 'MonitoringEmail', {
+      domain: 'm.akdev.xyz',
     });
-
-    const allowCdkAccessPolicyStatement = new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: ["sts:AssumeRole"],
-      resources: ["arn:aws:iam::*:role/cdk-*"],
-      conditions: {
-        StringEquals: {
-          "aws:ResourceTag/aws-cdk:bootstrap-role": [
-            "file-publishing",
-            "lookup",
-            "deploy",
-          ],
-        },
-      },
-    });
-
-    this.githubActionsRole.addToPolicy(allowCdkAccessPolicyStatement);
-
-    const outputs: Record<string, string> = {
-      GithubActionsRole: this.githubActionsRole.roleArn,
-    };
-
-    Object.keys(outputs)
-     .forEach(key => new cdk.CfnOutput(this, `${key}Output`, { value: outputs[key] }));
   }
 }
